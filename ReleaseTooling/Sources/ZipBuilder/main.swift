@@ -274,7 +274,7 @@ struct ZipBuilderTool: ParsableCommand {
                                  macos: minimumMacOSVersion,
                                  tvos: minimumTVOSVersion)
 
-      let (installedPods, frameworks, _) =
+      let (installedPods, frameworks) =
         builder.buildAndAssembleZip(podsToInstall: podsToBuild,
                                     includeCarthage: false,
                                     includeDependencies: buildDependencies)

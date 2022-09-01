@@ -166,7 +166,7 @@ struct ZipBuilder {
   func buildAndAssembleZip(podsToInstall: [CocoaPodUtils.VersionedPod],
                            includeCarthage: Bool,
                            includeDependencies: Bool) ->
-    ([String: CocoaPodUtils.PodInfo], [String: [URL]], URL?) {
+    ([String: CocoaPodUtils.PodInfo], [String: [URL]]) {
     // Remove CocoaPods cache so the build gets updates after a version is rebuilt during the
     // release process. Always do this, since it can be the source of subtle failures on rebuilds.
     CocoaPodUtils.cleanPodCache()
@@ -179,7 +179,6 @@ struct ZipBuilder {
     // the folders in each product directory.
     let linkage: CocoaPodUtils.LinkageType = dynamicFrameworks ? .dynamic : .standardStatic
     var groupedFrameworks: [String: [URL]] = [:]
-    var carthageCoreDiagnosticsFrameworks: [URL] = []
     var podsBuilt: [String: CocoaPodUtils.PodInfo] = [:]
     var xcframeworks: [String: [URL]] = [:]
     var resources: [String: URL] = [:]
@@ -241,14 +240,6 @@ struct ZipBuilder {
                                                  podInfo: podInfo)
           groupedFrameworks[podName] = (groupedFrameworks[podName] ?? []) + frameworks
 
-          if includeCarthage, podName == "FirebaseCoreDiagnostics" {
-            let (cdFrameworks, _) = builder.compileFrameworkAndResources(withName: podName,
-                                                                         logsOutputDir: paths
-                                                                           .logsOutputDir,
-                                                                         setCarthage: true,
-                                                                         podInfo: podInfo)
-            carthageCoreDiagnosticsFrameworks += cdFrameworks
-          }
           if resourceContents != nil {
             resources[podName] = resourceContents
           }
@@ -299,13 +290,7 @@ struct ZipBuilder {
       fatalError("Could not create XCFrameworks Carthage directory: \(error)")
     }
 
-    let carthageCoreDiagnosticsXcframework = FrameworkBuilder.makeXCFramework(
-      withName: "FirebaseCoreDiagnostics",
-      frameworks: carthageCoreDiagnosticsFrameworks,
-      xcframeworksDir: xcframeworksCarthageDir,
-      resourceContents: nil
-    )
-    return (podsBuilt, xcframeworks, carthageCoreDiagnosticsXcframework)
+    return (podsBuilt, xcframeworks, nil)
   }
 
   /// Try to build and package the contents of the Zip file. This will throw an error as soon as it
@@ -333,7 +318,7 @@ struct ZipBuilder {
                                                     platforms: ["ios"]))
 
     print("Final expected versions for the Zip file: \(podsToInstall)")
-    let (installedPods, frameworks, carthageCoreDiagnosticsXcframeworkFirebase) =
+    let (installedPods, frameworks) =
       buildAndAssembleZip(podsToInstall: podsToInstall,
                           includeCarthage: true,
                           // Always include dependencies for Firebase zips.
@@ -346,22 +331,16 @@ struct ZipBuilder {
         "installed: \(installedPods)")
     }
 
-    guard let carthageCoreDiagnosticsXcframework = carthageCoreDiagnosticsXcframeworkFirebase else {
-      fatalError("CoreDiagnosticsXcframework is missing")
-    }
-
     let zipDir = try assembleDistributions(withPackageKind: "Firebase",
                                            podsToInstall: podsToInstall,
                                            installedPods: installedPods,
                                            frameworksToAssemble: frameworks,
                                            firebasePod: firebasePod)
-    // Replace Core Diagnostics
-    var carthageFrameworks = frameworks
-    carthageFrameworks["FirebaseCoreDiagnostics"] = [carthageCoreDiagnosticsXcframework]
+
     let carthageDir = try assembleDistributions(withPackageKind: "CarthageFirebase",
                                                 podsToInstall: podsToInstall,
                                                 installedPods: installedPods,
-                                                frameworksToAssemble: carthageFrameworks,
+                                                frameworksToAssemble: frameworks,
                                                 firebasePod: firebasePod)
 
     return ReleaseArtifacts(firebaseVersion: firebasePod.version,
