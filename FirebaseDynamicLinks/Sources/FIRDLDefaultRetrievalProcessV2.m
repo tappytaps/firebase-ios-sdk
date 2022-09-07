@@ -206,7 +206,7 @@ NS_ASSUME_NONNULL_BEGIN
     return @"";
   }
 
-  if (@available(iOS 10.0, *)) {
+  if (@available(iOS 16.0, *)) {
     return @"";
   }
 
