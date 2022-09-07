@@ -206,6 +206,10 @@ NS_ASSUME_NONNULL_BEGIN
     return @"";
   }
 
+  if (@available(iOS 10.0, *)) {
+    return @"";
+  }
+
   NSString *pasteboardContents = @"";
   if (@available(iOS 10.0, *)) {
     if ([[UIPasteboard generalPasteboard] hasURLs]) {
